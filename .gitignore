@@ -29,6 +29,8 @@
 *.nav
 *.snm
 *.vrb
+*.html
+*.tex
 
 # Template specific
 packages.bib

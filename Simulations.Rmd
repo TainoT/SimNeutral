@@ -2,11 +2,15 @@
 title: "Simulation of the Neutral Model"
 author: "Eric Marcon"
 date: "`r Sys.Date()`"
-bibliography: references.bib
-output: 
+output:
   html_document:
-    toc: true
-    toc_float: true
+    toc: yes
+    toc_float: yes
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -24,7 +28,11 @@ InstallPackages(c("bookdown", "formatR", "tidyverse"))
 # Specific packages
 InstallPackages(c("cli", "entropart", "dbmss", "vegan"))
 # knitr options
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	cache = TRUE
+)
 # Load the tidyverse
 library("tidyverse")
 ```
@@ -35,12 +43,11 @@ We want to build a species-rich metacommunity and a local, small community that 
 
 ## Species
 
-We will use letters to build the species names, e.g. "AAC".
-Combining 3 letters, we'll have $26^3 = 17576$ species napes, i.e. more than the number of species in Amazonia [@TerSteege2013].
+We will use letters to build the species names, e.g. "AAC". Combining 3 letters, we'll have $26^3 = 17576$ species napes, i.e. more than the number of species in Amazonia [@TerSteege2013].
 
 To build the names, we use this code:
 
-```{r}
+```{r species names}
 # LETTERS is the vector of capital letters A:Z
 # outer() combines the first two args by FUN
 outer(LETTERS, LETTERS, FUN = paste0) %>% 
@@ -55,7 +62,7 @@ outer(LETTERS, LETTERS, FUN = paste0) %>%
 
 The Amazonian metacommunity [@Hubbell2001] follows a log-series distribution [@Fisher1943] with $3.9 \times 10^{11}$ trees and $\alpha = 754$ [@TerSteege2013].
 
-```{r}
+```{r amazon meta}
 mc_size <- 3.9E11
 alpha <- 754
 # Number of species (Fisher, 1943)
@@ -69,7 +76,7 @@ Its estimated number of species is `r format(n_species, scientific = FALSE)`.
 
 We'll draw a random log-series distribution.
 
-```{r}
+```{r amazon logseries}
 #' Stochastic abundance of a (single) species in a log-series distribution
 #'
 #' @param N The size of the metacommunity
@@ -101,11 +108,9 @@ LSabundance <- function(N, alpha) {
 }
 ```
 
-Simulating the abundance of the `r format(n_species, scientific = FALSE)` of Amazonia takes a few hours.
-The result is saved on disk.
-If the file can be found, it is read instead of running the simulation from scratch.
+Simulating the abundance of the `r format(n_species, scientific = FALSE)` of Amazonia takes a few hours. The result is saved on disk. If the file can be found, it is read instead of running the simulation from scratch.
 
-```{r}
+```{r amazon abondance}
 if (file.exists("data/amazonia.Rda")) {
   load("data/amazonia.Rda")
 } else {
@@ -142,11 +147,9 @@ autoplot(amz_abundances, Distribution = "lseries")
 
 ### Barro Colorado Island
 
-We'll use a far smaller dataset according to BCI characteristics [@Hubbell2001]: $\theta=50$ and $m=0.1$.
-We first build a metacommunity with a billion trees.
-This size is arbitrary: the important parameter is $\theta$.
+We'll use a far smaller dataset according to BCI characteristics [@Hubbell2001]: $\theta=50$ and $m=0.1$. We first build a metacommunity with a billion trees. This size is arbitrary: the important parameter is $\theta$.
 
-```{r}
+```{r colorado island}
 mc_size <- 1E9
 # theta is also Fisher's alpha
 alpha <- 50
@@ -157,10 +160,9 @@ alpha <- 50
   n_species
 ```
 
-The metacommunity contains `r n_species` species.
-We simulate their abundances.
+The metacommunity contains `r n_species` species. We simulate their abundances.
 
-```{r}
+```{r colorado abondance}
 # Apply LSabundance to each species
 library("cli")
 # Prepare a progress bar
@@ -192,7 +194,7 @@ autoplot(mc_abundances, Distribution = "lseries")
 
 We draw a local community from the metacommunity.
 
-```{r}
+```{r colorado local}
 # Choose the size of the community
 c_size <- 256
 # Draw a random community according to the abundances of the metacommunity
@@ -216,7 +218,7 @@ autoplot(c_abundances)
 
 We set an arbitrary position to the trees of the local community just to visualize it.
 
-```{r}
+```{r drifting}
 library("dbmss")
 # Build a dataframe for the marks of a point pattern
 marks <- data.frame(
@@ -245,7 +247,7 @@ autoplot(c_wmppp)
 
 The drift model is as follows: at each step, a tree dies and is replaced by a new tree from the species of the community, with respect to their probabilities.
 
-```{r}
+```{r drifiting rule}
 #' One-step evolution of a community without migration
 #'
 #' @param community A wmppp object (package dbmss) where points are trees.
@@ -279,7 +281,7 @@ c_wmppp %>%
 
 Drift causes the local extinction of all species but one.
 
-```{r}
+```{r drifting plot}
 library("cli")
 # Copy the community to modify it
 the_community <- c_wmppp
@@ -318,10 +320,9 @@ data.frame(Time = seq_len(step), Richness = richness_time[seq_len(step)]) %>%
 
 Immigration is the ability to replace the dead tree in the local community by a tree of a species of the metacommunity.
 
-The parameter `m` is the probability for that to happen.
-The evolution function is rewritten.
+The parameter `m` is the probability for that to happen. The evolution function is rewritten.
 
-```{r}
+```{r immigration}
 #' One-step evolution of a community with migration
 #'
 #' @param community A wmppp object (package dbmss) where points are trees.
@@ -352,7 +353,7 @@ evolve_migrate <- function(community, metacommunity, m = 0) {
 
 We make the community evolve the same amount of time as needed for complete drift and see what happens.
 
-```{r}
+```{r immigration plot}
 # Choose the migration probability
 m <- 0.1
 
@@ -399,14 +400,11 @@ Re-use the code above to run a few experiments about drift time and the shape of
 
 ## The immigration parameter
 
-From the BCI metacommunity, draw a local 1-ha community.
-Choose two immigration rates in turn: 0.1, as observed at BCI, and 0.01.
-Run a 50,000 steps and observe the final RAC.
-Compare the nuber of species with the actual value.
+From the BCI metacommunity, draw a local 1-ha community. Choose two immigration rates in turn: 0.1, as observed at BCI, and 0.01. Run a 50,000 steps and observe the final RAC. Compare the nuber of species with the actual value.
 
 BCI data is available in package vegan.
 
-```{r}
+```{r exo immigration}
 library("vegan")
 data(BCI)
 # Number of trees per ha
@@ -421,16 +419,11 @@ BCI[1, ] %>%
   autoplot()
 ```
 
-
-
 ## The effect of the size of the local community to drift
 
-Draw small communities with 10 species, in log-normal distributions, ignoring the metacommunity.
-Make their size vary: 16, 32, 64, 128, 256 individuals.
-Run the drift model and note the necessary time for complete drift.
-Compare your results with figure 4.12 (page 106) of @Hubbell2001.
+Draw small communities with 10 species, in log-normal distributions, ignoring the metacommunity. Make their size vary: 16, 32, 64, 128, 256 individuals. Run the drift model and note the necessary time for complete drift. Compare your results with figure 4.12 (page 106) of @Hubbell2001.
 
-```{r}
+```{r exo hint}
 # Hint
 rCommunity(1, size = 256) %>% 
   autoplot()
